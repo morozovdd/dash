@@ -1,11 +1,16 @@
 from uagents import Bureau
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 # Set environment variables
 os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY")
 os.environ["TELEGRAM_BOT_TOKEN"] = os.getenv("TELEGRAM_BOT_TOKEN")
 os.environ["USER_CHAT_ID"] = os.getenv("USER_CHAT_ID")
 os.environ["EMERGENCY_CONTACT_CHAT_ID"] = os.getenv("EMERGENCY_CONTACT_CHAT_ID")
+os.environ["GOOGLE_MAPS_API_KEY"] = os.getenv("GOOGLE_MAPS_API_KEY")
 
 # Create and configure Bureau
 bureau = Bureau(
@@ -16,17 +21,18 @@ bureau = Bureau(
 from collector_agent import collector_agent
 from analyzer_agent import analyzer_agent
 from decision_maker import decision_maker
-# from locator_agent import locator_agent
+from locator_agent import locator_agent
 
 # Add agents to bureau
 bureau.add(collector_agent)
 bureau.add(analyzer_agent)
 bureau.add(decision_maker)
-# bureau.add(locator_agent)
+bureau.add(locator_agent)
 
 os.environ['ANALYZER_ADDRESS'] = analyzer_agent.address
 os.environ['COLLECTOR_ADDRESS'] = collector_agent.address
 os.environ['DECISION_MAKER_ADDRESS'] = decision_maker.address
+os.environ['LOCATOR_ADDRESS'] = locator_agent.address
 
 print(f"Analyzer address: {analyzer_agent.address}")
 print(f"Decision maker address: {decision_maker.address}")

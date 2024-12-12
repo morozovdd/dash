@@ -5,6 +5,7 @@ import json
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CallbackQueryHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CallbackQueryHandler
 
 # Message models
 class AccidentAnalysis(Model):
@@ -53,6 +54,41 @@ LLMCOMMUNICATOR_ADDRESS = os.getenv("LLMCOMMUNICATOR_ADDRESS")
 decision_maker = Agent(name="decision-maker",
                        seed="decision-maker-seed",                      
                         )
+
+# Create a global variable for the Telegram application
+telegram_app = None
+
+# Add this function to initialize Telegram bot once
+async def setup_telegram_bot():
+    global telegram_app
+    if telegram_app is None:
+        telegram_app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+        
+        # Setup callback handler
+        async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            query = update.callback_query
+            await query.answer()
+            
+            response = UserResponse(
+                responded=True,
+                response_time=datetime.now(),
+                is_ok=query.data == 'ok'
+            )
+            
+            # Update the message to show response received
+            await query.edit_message_text(
+                text=f"Response received: {'OK' if query.data == 'ok' else 'Help needed'}"
+            )
+            
+            # Get decision maker agent and send response
+            await telegram_app.bot.send_message(
+                chat_id=query.message.chat_id,
+                text="Your response has been recorded."
+            )
+        
+        telegram_app.add_handler(CallbackQueryHandler(button_callback))
+        await telegram_app.initialize()
+        await telegram_app.start()
 
 # Store for tracking alert states
 @decision_maker.on_event("startup")
@@ -104,9 +140,16 @@ async def handle_analysis(ctx: Context, sender: str, msg: AccidentAnalysis):
 # Handle geolocation updates
 @emergency_protocol.on_message(model=GeoInfo)
 async def handle_traffic(ctx: Context, sender: str, msg: GeoInfo):
-    status = ctx.storage.get('alert_status')
-    status['traffic_status'] = msg.traffic_level
-    ctx.storage.set('alert_status', status)
+    # Store the entire geo_info for use in emergency notifications
+    ctx.storage.set('geo_info', {
+        'patient_address': msg.patient_address,
+        'emergency_contact': msg.emergency_contact,
+        'nearest_hospital': msg.nearest_hospital,
+        'estimated_travel_time': msg.estimated_travel_time,
+        'coordinates': msg.coordinates
+    })
+    
+    ctx.logger.info(f"Stored new location information: {msg.patient_address}")
     
 # Handle user responses
 @emergency_protocol.on_message(model=UserResponse)
@@ -117,6 +160,12 @@ async def handle_user_response(ctx: Context, sender: str, msg: UserResponse):
 
 async def notify_user(ctx: Context):
     """Send Telegram notification to user with response buttons"""
+    global telegram_app
+    
+    # Setup bot if not already setup
+    if telegram_app is None:
+        await setup_telegram_bot()
+    
     keyboard = [
         [
             InlineKeyboardButton("I'm OK", callback_data='ok'),
@@ -126,42 +175,24 @@ async def notify_user(ctx: Context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     try:
-        app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-        
         # Send alert message with buttons
-        await app.bot.send_message(
+        await telegram_app.bot.send_message(
             chat_id=USER_CHAT_ID,
             text="🚨 Possible emergency detected! Are you OK?",
             reply_markup=reply_markup
         )
         
-        # Handle button responses
-        async def button_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
-            query = update.callback_query
-            await query.answer()
-            
-            response = UserResponse(
-                responded=True,
-                response_time=datetime.now(),
-                is_ok=query.data == 'ok'
-            )
-            
-            # Update the message to show response received
-            await query.edit_message_text(
-                text=f"Response received: {'OK' if query.data == 'ok' else 'Help needed'}"
-            )
-            
-            # Send response back to our agent system
-            await ctx.send(ctx.address, response)
-        
-        app.add_handler(CallbackQueryHandler(button_callback))
-        await app.initialize()
-        await app.start()
-        
         ctx.logger.info("Telegram notification sent with response buttons")
         
     except Exception as e:
         ctx.logger.error(f"Failed to send Telegram notification: {e}")
+
+# Add shutdown handler for cleanup
+@decision_maker.on_event("shutdown")
+async def shutdown(ctx: Context):
+    global telegram_app
+    if telegram_app:
+        await telegram_app.stop()
 
 async def notify_emergency_services(ctx: Context, context: str):
     """Send notification to emergency services and emergency contact"""

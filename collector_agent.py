@@ -82,6 +82,28 @@ async def fetch_health_data(ctx: Context):
     except Exception as e:
         ctx.logger.error(f"Error fetching health data: {e}")
 
+async def send_location_data(ctx: Context, coordinates: Dict[str, List[float]]):
+    """Send latest location data to locator agent"""
+    try:
+        # Get the most recent coordinates
+        latest_index = -1
+        location_data = LocationData(
+            latitude=coordinates['latitude'][latest_index],
+            longitude=coordinates['longitude'][latest_index]
+        )
+        
+        # Send to locator agent
+        LOCATOR_ADDRESS = os.getenv("LOCATOR_ADDRESS")
+        if LOCATOR_ADDRESS:
+            await ctx.send(LOCATOR_ADDRESS, location_data)
+            ctx.logger.info(f"Sent location data to locator agent")
+        else:
+            ctx.logger.warning("Locator address not found in environment variables")
+            
+    except Exception as e:
+        ctx.logger.error(f"Error sending location data: {e}")
+
+
 async def aggregate_and_send_data(ctx: Context):
     data_points = ctx.storage.get('data_points')
     if not data_points:
@@ -145,7 +167,7 @@ async def aggregate_and_send_data(ctx: Context):
         aggregated['device_states']['device_orientation'].append(movement['device_orientation'])
         aggregated['device_states']['activity_state'].append(movement['activity_state'])
         
-        # Context
+       # Context and GPS coordinates
         context = point['context']
         aggregated['context']['location_type'].append(context['location_type'])
         aggregated['context']['time_of_day'].append(context['time_of_day'])
@@ -156,12 +178,16 @@ async def aggregate_and_send_data(ctx: Context):
     ctx.logger.info(f"Aggregated health data:")
     ctx.logger.info(json.dumps(aggregated, indent=2))
 
-    # Send the data to another agent
     try:
+        # Send aggregated data to analyzer
         health_data = AggregatedHealthData(**aggregated)
         ANALYZER_ADDRESS = os.getenv("ANALYZER_ADDRESS")
         await ctx.send(ANALYZER_ADDRESS, health_data)
-        ctx.logger.info(f"Sent aggregated data via health protocol")
+        ctx.logger.info(f"Sent aggregated data to analyzer")
+        
+        # Send location data to locator
+        await send_location_data(ctx, aggregated['gps_coordinates'])
+        
     except Exception as e:
         ctx.logger.error(f"Error sending data: {e}")
 

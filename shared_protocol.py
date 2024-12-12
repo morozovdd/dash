@@ -1,8 +1,24 @@
 from uagents import Model, Protocol
 from typing import List, Dict
-from datetime import datetime
 
-# Health Data Models
+# Shared data models
+class LocationData(Model):
+    latitude: float
+    longitude: float
+
+class HospitalInfo(Model):
+    name: str
+    address: str
+    distance: float
+    travel_time: int
+
+class GeoInfo(Model):
+    patient_address: str
+    emergency_contact: str
+    nearest_hospital: str
+    estimated_travel_time: int
+    coordinates: Dict[str, float]
+
 class AggregatedHealthData(Model):
     timestamps: List[str]
     user_id: str
@@ -17,31 +33,27 @@ class AccidentAnalysis(Model):
     alert: bool
     context: str
 
-class LocationData(Model):
-    latitude: float
-    longitude: float
-
-# Emergency Models
-class GeoInfo(Model):
-    patient_address: str
-    emergency_contact: str
-    nearest_hospital: str
-    estimated_travel_time: int
-    coordinates: Dict[str, float]
-
-class UserResponse(Model):
-    responded: bool
-    response_time: datetime
-
-class EmergencyNotification(Model):
-    timestamp: str
-    location: str
-    patient_id: str
-    vital_signs: Dict
-    context: str
-    nearest_hospital: str
-    estimated_arrival: int
-
-# Create shared protocols
-health_protocol = Protocol("health-analysis", "0.1.0")
+# Create shared protocol
+health_protocol = Protocol("health-monitoring", "0.1.0")
 emergency_protocol = Protocol("emergency-decision", "0.1.0")
+
+# Define message paths in protocol
+@health_protocol.on_message(model=AggregatedHealthData, replies=AccidentAnalysis)
+def health_data_handler():
+    """Handle health data messages"""
+    pass
+
+@health_protocol.on_message(model=LocationData, replies=GeoInfo)
+def location_handler():
+    """Handle location data messages"""
+    pass
+
+@emergency_protocol.on_message(model=GeoInfo)
+def geo_info_handler():
+    """Handle geo information messages"""
+    pass
+
+@emergency_protocol.on_message(model=AccidentAnalysis)
+def analysis_handler():
+    """Handle accident analysis messages"""
+    pass
