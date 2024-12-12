@@ -18,6 +18,72 @@
   - [Installation Instructions](#installation-instructions)
   - [Thank you!!!](#thank-you)
 
+## Functional Srtructure
+
+```mermaid
+graph TB
+    subgraph Data Collection
+        Device[Health Monitoring Device]
+        Collector[Collector Agent]
+        Device -->|Health Data| Collector
+        
+        subgraph Data Types
+            VD[Vital Signs]
+            MD[Movement Data]
+            CD[Context Data]
+            GPS[GPS Coordinates]
+            VD --> Collector
+            MD --> Collector
+            CD --> Collector
+            GPS --> Collector
+        end
+    end
+
+    subgraph Analysis Layer
+        Analyzer[Analyzer Agent]
+        Locator[Locator Agent]
+        
+        subgraph External Services
+            Gemini[Gemini AI]
+            GMaps[Google Maps APIs]
+            Gemini -->|Analysis| Analyzer
+            GMaps -->|Geocoding & Hospital Info| Locator
+        end
+    end
+
+    subgraph Decision Making
+        Decision[Decision Maker Agent]
+        
+        subgraph Alert Logic
+            AL1[Alert Threshold]
+            AL2[Consecutive Alerts]
+            AL3[User Response]
+            AL1 --> Decision
+            AL2 --> Decision
+            AL3 --> Decision
+        end
+    end
+
+    subgraph Notification System
+        Telegram[Telegram Bot]
+        
+        subgraph Recipients
+            User[User]
+            Emergency[Emergency Contact]
+            Services[Emergency Services]
+        end
+    end
+
+    Collector -->|Aggregated Health Data| Analyzer
+    Collector -->|Location Data| Locator
+    Analyzer -->|Accident Analysis| Decision
+    Locator -->|Geo Information| Decision
+    Decision -->|Alert Notifications| Telegram
+    Telegram -->|Status Buttons| User
+    Telegram -->|Emergency Alert| Emergency
+    Decision -->|Emergency Data| Services
+```
+
 ## DEMO link
 
 https://www.loom.com/share/740835cae2a244d8bcb3f5a76ea5caca?sid=ef2146ef-6b03-4d5d-bc2e-633591a2ccc0
