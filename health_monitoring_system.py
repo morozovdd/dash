@@ -16,13 +16,13 @@ bureau = Bureau(
 from collector_agent import collector_agent
 from analyzer_agent import analyzer_agent
 from decision_maker import decision_maker
-from locator_agent import locator_agent
+# from locator_agent import locator_agent
 
 # Add agents to bureau
 bureau.add(collector_agent)
 bureau.add(analyzer_agent)
 bureau.add(decision_maker)
-bureau.add(locator_agent)
+# bureau.add(locator_agent)
 
 os.environ['ANALYZER_ADDRESS'] = analyzer_agent.address
 os.environ['COLLECTOR_ADDRESS'] = collector_agent.address
