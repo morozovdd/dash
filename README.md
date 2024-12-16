@@ -149,7 +149,7 @@ https://github.com/morozovdd/dash
 ## Technologies Used
 
 - **Programming Languages:** Python, Javascript (for frontend data dashboard display)
-- **Frameworks & Libraries:** Next.js, uagent from Fetch.AI, bureau, unicorn.
+- **Frameworks & Libraries:** Next.js, uagent from Fetch.AI, bureau, uvicorn.
 - **APIs & Services:** Gemini, Google Map, Telegram, 
 - **Database:** Local simulated database
 - **Tools & Platforms:** FETCH.AI
